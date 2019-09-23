@@ -48,10 +48,13 @@ namespace Anime4KSharp
             Bitmap luminanceMap = ImageProcess.ComputeLuminance(img);
 
             // Push
+            Bitmap pushMap = ImageProcess.Unblur(img, luminanceMap, clamp((int)(pushStrength * 255), 0, 0xFFFF));
 
             // Compute Gradient
+            Bitmap GradientMap = ImageProcess.ComputeGradient(pushMap);
 
             // Push Gradient
+            Bitmap pushGradientMap = ImageProcess.PushGradient(img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
 
             img.Save(outputFile, System.Drawing.Imaging.ImageFormat.Png);
         }
@@ -72,7 +75,20 @@ namespace Anime4KSharp
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
             g.DrawImage(bm, 0, 0, width, height);
             return newImage;
+        }
 
+        private static int clamp(int i, int min, int max)
+        {
+            if (i < min)
+            {
+                i = min;
+            }
+            else if (i > max)
+            {
+                i = max;
+            }
+
+            return i;
         }
     }
 }

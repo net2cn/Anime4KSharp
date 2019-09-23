@@ -118,7 +118,7 @@ namespace Anime4KSharp
                     bool l4 = false;
 
                     var lightestColor = bm.GetPixel(x, y);
-                    var lightestLum = lm.GetPixel(x, y);
+                    var lightestLum = (int)lm.GetPixel(x, y).R;
 
                     for (int kernelType = 0; kernelType < 8; kernelType++)
                     {
@@ -343,21 +343,101 @@ namespace Anime4KSharp
                                 var c2 = bm.GetPixel(d2x, d2y);
 
                                 var newColor = weightedAverageRGB(bm.GetPixel(x,y), averageRGB(c0, c1, c2), strength);
-                                var newLum = getLuminance(getRed(newColor), getGreen(newColor), getBlue(newColor));
+                                var newLum = getLuminance(newColor.R, newColor.G, newColor.B);
 
                                 if (newLum > lightestLum)
                                 {
                                     lightestLum = newLum;
                                     lightestColor = newColor;
                                 }
-
                             }
                         }
                     }
+                    bm.SetPixel(x, y, lightestColor);
+                    lm.SetPixel(x, y, Color.FromArgb(clamp(lightestLum, 0, 0xFF), clamp(lightestLum, 0, 0xFF), clamp(lightestLum, 0, 0xFF)));
                 }
             }
 
+            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
             return bm;
+        }
+
+        public static Bitmap ComputeGradient(Bitmap bm)
+        {
+            Bitmap b = bm;
+            Bitmap bb = bm;
+            int width = b.Width;
+            int height = b.Height;
+            int[,] gx = new int[,] { { -1, 0, 1 }, { -2, 0, 2 }, { -1, 0, 1 } };
+            int[,] gy = new int[,] { { 1, 2, 1 }, { 0, 0, 0 }, { -1, -2, -1 } };
+
+            int[,] allPixR = new int[width, height];
+            int[,] allPixG = new int[width, height];
+            int[,] allPixB = new int[width, height];
+
+            int limit = 128 * 128;
+
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    allPixR[i, j] = b.GetPixel(i, j).R;
+                    allPixG[i, j] = b.GetPixel(i, j).G;
+                    allPixB[i, j] = b.GetPixel(i, j).B;
+                }
+            }
+
+            int new_rx = 0, new_ry = 0;
+            int new_gx = 0, new_gy = 0;
+            int new_bx = 0, new_by = 0;
+            int rc, gc, bc;
+            for (int i = 1; i < b.Width - 1; i++)
+            {
+                for (int j = 1; j < b.Height - 1; j++)
+                {
+
+                    new_rx = 0;
+                    new_ry = 0;
+                    new_gx = 0;
+                    new_gy = 0;
+                    new_bx = 0;
+                    new_by = 0;
+                    rc = 0;
+                    gc = 0;
+                    bc = 0;
+
+                    for (int wi = -1; wi < 2; wi++)
+                    {
+                        for (int hw = -1; hw < 2; hw++)
+                        {
+                            rc = allPixR[i + hw, j + wi];
+                            new_rx += gx[wi + 1, hw + 1] * rc;
+                            new_ry += gy[wi + 1, hw + 1] * rc;
+
+                            gc = allPixG[i + hw, j + wi];
+                            new_gx += gx[wi + 1, hw + 1] * gc;
+                            new_gy += gy[wi + 1, hw + 1] * gc;
+
+                            bc = allPixB[i + hw, j + wi];
+                            new_bx += gx[wi + 1, hw + 1] * bc;
+                            new_by += gy[wi + 1, hw + 1] * bc;
+                        }
+                    }
+                    if (new_rx * new_rx + new_ry * new_ry > limit || new_gx * new_gx + new_gy * new_gy > limit || new_bx * new_bx + new_by * new_by > limit)
+                        bb.SetPixel(i, j, Color.Black);
+
+                    //bb.SetPixel (i, j, Color.FromArgb(allPixR[i,j],allPixG[i,j],allPixB[i,j]));
+                    else
+                        bb.SetPixel(i, j, Color.Transparent);
+                }
+            }
+            bb.Save("D:\\Video Materials\\TWEWY_Copy\\Gradient.png", ImageFormat.Png);
+            return bb;
+        }
+
+        public static Bitmap PushGradient(Bitmap bm, int strength)
+        {
+
         }
 
         private static int clamp(int i, int min, int max)
@@ -374,9 +454,34 @@ namespace Anime4KSharp
             return i;
         }
 
+        private static int getLuminance(int r, int g, int b)
+        {
+            return (r + r + g + g + g + b) / 6;
+        }
+
         private static bool compareLuminance4(int dark0, int dark1, int dark2, int light0, int light1, int light2, int light3)
         {
             return (dark0 < light0 && dark0 < light1 && dark0 < light2 && dark0 < light3 && dark1 < light0 && dark1 < light1 && dark1 < light2 && dark1 < light3 && dark2 < light0 && dark2 < light1 && dark2 < light2 && dark2 < light3);
+        }
+
+        private static Color averageRGB(Color c0, Color c1, Color c2)
+        {
+            int ra = (c0.R + c1.R + c2.R) / 3;
+            int ga = (c0.G + c1.G + c2.G) / 3;
+            int ba = (c0.B + c1.B + c2.B) / 3;
+            int aa = (c0.A + c1.A + c2.A) / 3;
+
+            return Color.FromArgb(aa, ra, ga, ba);
+        }
+
+        private static Color weightedAverageRGB(Color c0, Color c1, int alpha)
+        {
+            int ra = (c0.R * (0xFF - alpha) + c1.R * alpha) / 0xFF;
+            int ga = (c0.G * (0xFF - alpha) + c1.G * alpha) / 0xFF;
+            int ba = (c0.B * (0xFF - alpha) + c1.B * alpha) / 0xFF;
+            int aa = (c0.A * (0xFF - alpha) + c1.A * alpha) / 0xFF;
+
+            return Color.FromArgb(aa, ra, ga, ba);
         }
     }
 }
