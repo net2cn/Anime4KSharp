@@ -7,17 +7,17 @@ namespace Anime4KSharp
     {
         static void Main(string[] args)
         {
-            //if (args.Length < 2)
-            //{
-            //    Console.WriteLine("Error: Please specify input and output png files");
-            //    return;
-            //}
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Error: Please specify input and output png files");
+                return;
+            }
 
-            //string inputFile = args[0];
-            //string outputFile = args[1];
+            string inputFile = args[0];
+            string outputFile = args[1];
 
-            string inputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1).png";
-            string outputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1)_Ref.png";
+            //string inputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1).png";
+            //string outputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1)_Ref.png";
 
             Bitmap img = new Bitmap(inputFile);
             img = copyType(img);
@@ -43,33 +43,33 @@ namespace Anime4KSharp
             }
 
             img = upscale(img, (int)(img.Width * scale), (int)(img.Height * scale));
-
-            // Compute Luminance
-            Bitmap luminanceMap = ImageProcess.ComputeLuminance(img);
+            
+            // Compute Luminance and store it to alpha channel.
+            ImageProcess.ComputeLuminance(ref img);
 
             // Push
-            Bitmap pushMap = ImageProcess.Unblur(img, luminanceMap, clamp((int)(pushStrength * 255), 0, 0xFFFF));
+            ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
 
-            // Compute Gradient
-            Bitmap GradientMap = ImageProcess.ComputeGradient(pushMap);
+            // Compute Gradient and store it to alpha channel.
+            ImageProcess.ComputeGradient(ref img);
 
             // Push Gradient
-            Bitmap pushGradientMap = ImageProcess.PushGradient(img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
+            ImageProcess.PushGradient(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
 
             img.Save(outputFile, System.Drawing.Imaging.ImageFormat.Png);
         }
 
         static Bitmap copyType(Bitmap bm)
         {
-            Bitmap newImage = new Bitmap(bm.Width, bm.Height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
-            Graphics g = Graphics.FromImage(newImage);
-            g.DrawImage(bm, 0, 0);
-            return newImage;
+            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
+            Bitmap clone = bm.Clone(rect, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            return clone;
         }
 
         static Bitmap upscale(Bitmap bm, int width, int height)
         {
-            Bitmap newImage = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            Bitmap newImage = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
             Graphics g = Graphics.FromImage(newImage);
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
