@@ -26,6 +26,7 @@ namespace Anime4KSharp
 
         public static void PushColor(ref Bitmap bm, int strength)
         {
+            // Push color based on luminance.
             Bitmap temp = new Bitmap(bm.Width, bm.Height);
 
             for (int x = 0; x < bm.Width-1; x++)
@@ -196,11 +197,11 @@ namespace Anime4KSharp
                     var pixel = bm.GetPixel(x, y);
                     if (derivata > 255)
                     {
-                        temp.SetPixel(x, y, Color.FromArgb(255, pixel.R, pixel.G, pixel.B));
+                        temp.SetPixel(x, y, Color.FromArgb(0, pixel.R, pixel.G, pixel.B));
                     }
                     else
                     {
-                        temp.SetPixel(x, y, Color.FromArgb((int)derivata, pixel.R, pixel.G, pixel.B));
+                        temp.SetPixel(x, y, Color.FromArgb(0xFF-(int)derivata, pixel.R, pixel.G, pixel.B));
                     }
                 }
             }
@@ -293,6 +294,7 @@ namespace Anime4KSharp
 
         public static void PushGradient(ref Bitmap bm, int strength)
         {
+            // Push color based on gradient.
             Bitmap temp = new Bitmap(bm.Width, bm.Height);
 
             for (int x = 0; x < bm.Width - 1; x++)
@@ -468,7 +470,6 @@ namespace Anime4KSharp
             int aa = (cc.A * (0xFF - strength) + ((a.A + b.A + c.A) / 3) * strength) / 0xFF;
 
             return Color.FromArgb(aa, ra, ga, ba);
-
         }
     }
 }

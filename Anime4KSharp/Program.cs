@@ -8,17 +8,14 @@ namespace Anime4KSharp
     {
         static void Main(string[] args)
         {
-            //if (args.Length < 2)
-            //{
-            //    Console.WriteLine("Error: Please specify input and output png files");
-            //    return;
-            //}
+            if (args.Length < 2)
+            {
+                Console.WriteLine("Error: Please specify input and output png files");
+                return;
+            }
 
-            //string inputFile = args[0];
-            //string outputFile = args[1];
-
-            string inputFile = "D:\\Video Materials\\TWEWY_Copy\\f113.png";
-            string outputFile = "D:\\Video Materials\\TWEWY_Copy\\f113_Ref.png";
+            string inputFile = args[0];
+            string outputFile = args[1];
 
             Bitmap img = new Bitmap(inputFile);
             img = copyType(img);
@@ -30,37 +27,40 @@ namespace Anime4KSharp
                 scale = float.Parse(args[2]);
             }
 
-            float pushStrength = 0.3f;
-            float pushGradStrength = 1f;
+            float pushStrength = scale / 6f;
+            float pushGradStrength = scale / 2f;
 
             if (args.Length >= 4)
-            {
-                pushGradStrength = float.Parse(args[3]);
-            }
-
-            if (args.Length >= 5)
             {
                 pushStrength = float.Parse(args[4]);
             }
 
+            if (args.Length >= 5)
+            {
+                pushGradStrength = float.Parse(args[3]);
+            }
+
             img = upscale(img, (int)(img.Width * scale), (int)(img.Height * scale));
-            img.Save("D:\\Video Materials\\TWEWY_Copy\\Bilinear.png", ImageFormat.Png);
+            //img.Save("D:\\Video Materials\\TWEWY_Copy\\Bicubic.png", ImageFormat.Png);
 
-            // Compute Luminance and store it to alpha channel.
-            ImageProcess.ComputeLuminance(ref img);
-            img.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
+            for(int i = 0; i < 2; i++)
+            {
+                // Compute Luminance and store it to alpha channel.
+                ImageProcess.ComputeLuminance(ref img);
+                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
 
-            // Push (Notice that the alpha channel is pushed with rgb channels).
-            ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
-            img.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
+                // Push (Notice that the alpha channel is pushed with rgb channels).
+                ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
+                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
 
-            // Compute Gradient of Luminance and store it to alpha channel.
-            ImageProcess.ComputeGradient(ref img);
-            img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
+                // Compute Gradient of Luminance and store it to alpha channel.
+                ImageProcess.ComputeGradient(ref img);
+                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
 
-            // Push Gradient
-            ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
-            img.Save(outputFile, System.Drawing.Imaging.ImageFormat.Png);
+                // Push Gradient
+                ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
+            }
+            img.Save(outputFile, ImageFormat.Png);
         }
 
         static Bitmap copyType(Bitmap bm)
@@ -73,6 +73,7 @@ namespace Anime4KSharp
 
         static Bitmap upscale(Bitmap bm, int width, int height)
         {
+            // Upscale image with Bicubic interpolation.
             Bitmap newImage = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
             Graphics g = Graphics.FromImage(newImage);
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
