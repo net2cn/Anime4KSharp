@@ -2,7 +2,7 @@
 A C# implementation of Anime4K that execute compelete on CPU for getting a better understanding of the algorithm.
 
 # Usage
-dotnet Anime4KSharp.dll [input_path] [output_path] [(Optional)scale] [(Optional)push_gradient_strength] [(Optional)push_strength]
+dotnet Anime4KSharp.dll [input_path] [output_path] [(Optional)scale] [(Optional)push_strength] [(Optional)push_gradient_strength]
 
 default optional parameters:
 ```
