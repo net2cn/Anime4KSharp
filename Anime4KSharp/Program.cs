@@ -7,17 +7,17 @@ namespace Anime4KSharp
     {
         static void Main(string[] args)
         {
-            if (args.Length < 2)
-            {
-                Console.WriteLine("Error: Please specify input and output png files");
-                return;
-            }
+            //if (args.Length < 2)
+            //{
+            //    Console.WriteLine("Error: Please specify input and output png files");
+            //    return;
+            //}
 
-            string inputFile = args[0];
-            string outputFile = args[1];
+            //string inputFile = args[0];
+            //string outputFile = args[1];
 
-            //string inputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1).png";
-            //string outputFile = "D:\\Video Materials\\TWEWY_Copy\\ (1)_Ref.png";
+            string inputFile = "D:\\Video Materials\\TWEWY_Copy\\f113.png";
+            string outputFile = "D:\\Video Materials\\TWEWY_Copy\\f113_Ref.png";
 
             Bitmap img = new Bitmap(inputFile);
             img = copyType(img);
@@ -29,8 +29,8 @@ namespace Anime4KSharp
                 scale = float.Parse(args[2]);
             }
 
-            float pushStrength = scale / 6f;
-            float pushGradStrength = scale / 2f;
+            float pushStrength = 0.3f;
+            float pushGradStrength = 1f;
 
             if (args.Length >= 4)
             {
@@ -43,18 +43,20 @@ namespace Anime4KSharp
             }
 
             img = upscale(img, (int)(img.Width * scale), (int)(img.Height * scale));
-            
+
+            img.Save("D:\\Video Materials\\TWEWY_Copy\\Bilinear.png", System.Drawing.Imaging.ImageFormat.Png);
+
             // Compute Luminance and store it to alpha channel.
             ImageProcess.ComputeLuminance(ref img);
 
-            // Push
+            // Push (Notice that the alpha channel is pushed with rgb channels).
             ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
 
-            // Compute Gradient and store it to alpha channel.
+            // Compute Gradient of Luminance and store it to alpha channel.
             ImageProcess.ComputeGradient(ref img);
 
             // Push Gradient
-            ImageProcess.PushGradient(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
+            ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
 
             img.Save(outputFile, System.Drawing.Imaging.ImageFormat.Png);
         }

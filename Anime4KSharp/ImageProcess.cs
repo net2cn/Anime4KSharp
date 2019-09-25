@@ -22,7 +22,7 @@ namespace Anime4KSharp
                 }
             }
 
-            //bm.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
+            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
         }
 
         public static void PushColor(ref Bitmap bm, int strength)
@@ -158,11 +158,14 @@ namespace Anime4KSharp
                 }
             }
 
-            //bm.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
+            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
         }
 
         public static void ComputeGradient(ref Bitmap bm)
         {
+            // Don't overwrite bm itself instantly after the one convolution is done. Do it after all convonlutions are done.
+            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+
             int[][] sobelx = {new int[] {-1, 0, 1},
                               new int[] {-2, 0, 2},
                               new int[] {-1, 0, 1}};
@@ -171,31 +174,110 @@ namespace Anime4KSharp
                               new int[] { 0, 0, 0},
                               new int[] { 1, 2, 1}};
 
-            for (int i = 1; i < bm.Width - 1; i++)
+            for (int x = 1; x < bm.Width - 1; x++)
             {
-                for (int j = 1; j < bm.Height - 1; j++)
+                for (int y = 1; y < bm.Height - 1; y++)
                 {
-                    int dx = bm.GetPixel(i - 1, j - 1).R * sobelx[0][0] + bm.GetPixel(i, j - 1).R * sobelx[0][1] + bm.GetPixel(i + 1, j - 1).R * sobelx[0][2]
-                              + bm.GetPixel(i - 1, j).R * sobelx[1][0] + bm.GetPixel(i, j).R * sobelx[1][1] + bm.GetPixel(i + 1, j).R * sobelx[1][2]
-                              + bm.GetPixel(i - 1, j + 1).R * sobelx[2][0] + bm.GetPixel(i, j + 1).R * sobelx[2][1] + bm.GetPixel(i + 1, j + 1).R * sobelx[2][2];
+                    int dx = bm.GetPixel(x - 1, y - 1).A * sobelx[0][0] + bm.GetPixel(x, y - 1).A * sobelx[0][1] + bm.GetPixel(x + 1, y - 1).A * sobelx[0][2]
+                              + bm.GetPixel(x - 1, y).A * sobelx[1][0] + bm.GetPixel(x, y).A * sobelx[1][1] + bm.GetPixel(x + 1, y).A * sobelx[1][2]
+                              + bm.GetPixel(x - 1, y + 1).A * sobelx[2][0] + bm.GetPixel(x, y + 1).A * sobelx[2][1] + bm.GetPixel(x + 1, y + 1).A * sobelx[2][2];
 
-                    int dy = bm.GetPixel(i - 1, j - 1).R * sobely[0][0] + bm.GetPixel(i, j - 1).R * sobely[0][1] + bm.GetPixel(i + 1, j - 1).R * sobely[0][2]
-                           + bm.GetPixel(i - 1, j).R * sobely[1][0] + bm.GetPixel(i, j).R * sobely[1][1] + bm.GetPixel(i + 1, j).R * sobely[1][2]
-                           + bm.GetPixel(i - 1, j + 1).R * sobely[2][0] + bm.GetPixel(i, j + 1).R * sobely[2][1] + bm.GetPixel(i + 1, j + 1).R * sobely[2][2];
+                    int dy = bm.GetPixel(x - 1, y - 1).A * sobely[0][0] + bm.GetPixel(x, y - 1).A * sobely[0][1] + bm.GetPixel(x + 1, y - 1).A * sobely[0][2]
+                           + bm.GetPixel(x - 1, y).A * sobely[1][0] + bm.GetPixel(x, y).A * sobely[1][1] + bm.GetPixel(x + 1, y).A * sobely[1][2]
+                           + bm.GetPixel(x - 1, y + 1).A * sobely[2][0] + bm.GetPixel(x, y + 1).A * sobely[2][1] + bm.GetPixel(x + 1, y + 1).A * sobely[2][2];
                     double derivata = Math.Sqrt((dx * dx) + (dy * dy));
 
-                    var pixel = bm.GetPixel(i, j);
+                    var pixel = bm.GetPixel(x, y);
                     if (derivata > 255)
                     {
-                        bm.SetPixel(i, j, Color.FromArgb(255, pixel.R,pixel.G,pixel.B));
+                        temp.SetPixel(x, y, Color.FromArgb(255, pixel.R, pixel.G, pixel.B));
                     }
                     else
                     {
-                        bm.SetPixel(i, j, Color.FromArgb((int)derivata, pixel.R, pixel.G, pixel.B));
+                        temp.SetPixel(x, y, Color.FromArgb((int)derivata, pixel.R, pixel.G, pixel.B));
                     }
                 }
             }
+
+            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
+            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
+            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
         }
+
+        //public static void ComputeGradient(ref Bitmap bm)
+        //{
+        //    for (int x = 0; x < bm.Width - 1; x++)
+        //    {
+        //        for (int y = 0; y < bm.Height - 1; y++)
+        //        {
+        //            //Default translation constants
+        //            int xn = -1;
+        //            int xp = 1;
+        //            int yn = -1;
+        //            int yp = 1;
+
+        //            //If x or y is on the border, don't move out of bounds
+        //            if (x == 0)
+        //            {
+        //                xn = 0;
+        //            }
+        //            else if (x == bm.Width - 1)
+        //            {
+        //                xp = 0;
+        //            }
+        //            if (y == 0)
+        //            {
+        //                yn = 0;
+        //            }
+        //            else if (y == bm.Height - 1)
+        //            {
+        //                yp = 0;
+        //            }
+
+        //            var kernel = new List<Point>();
+        //            //Top column
+        //            //Point tl = new Point(x + xn, y + yn);
+        //            //Point tc = new Point(x, y + yn);
+        //            //Point tr = new Point(x + xp, y + yn);
+        //            var tl = bm.GetPixel(x + xn, y + yn);
+        //            var tc = bm.GetPixel(x, y + yn);
+        //            var tr = bm.GetPixel(x + xp, y + yn);
+
+        //            //Middle column
+        //            //Point ml = new Point(x + xn, y);
+        //            //Point mc = new Point(x, y);
+        //            //Point mr = new Point(x + xp, y);
+        //            var ml = bm.GetPixel(x + xn, y);
+        //            var mc = bm.GetPixel(x, y);
+        //            var mr = bm.GetPixel(x + xp, y);
+
+        //            //Bottom column
+        //            //Point bl = new Point(x + xn, y + yp);
+        //            //Point bc = new Point(x, y + yp);
+        //            //Point br = new Point(x + xp, y + yp);
+        //            var bl = bm.GetPixel(x + xn, y + yp);
+        //            var bc = bm.GetPixel(x, y + yp);
+        //            var br = bm.GetPixel(x + xp, y + yp);
+
+        //            int xgrad = (-tl.A + tr.A - ml.A - ml.A + mr.A + mr.A - bl.A + br.A);
+        //            int ygrad = (-tl.A - tc.A - tc.A - tr.A + bl.A + bc.A + bc.A + br.A);
+
+        //            double derivata = Math.Sqrt((xgrad * xgrad) + (ygrad * ygrad));
+
+        //            if (derivata > 255)
+        //            {
+        //                bm.SetPixel(x, y, Color.FromArgb(255, mc.R, mc.G, mc.B));
+        //            }
+        //            else
+        //            {
+        //                bm.SetPixel(x, y, Color.FromArgb((int)derivata, mc.R, mc.G, mc.B));
+        //            }
+        //        }
+        //    }
+
+        //    bm.Save("D:\\Video Materials\\TWEWY_Copy\\PushGrad.png", ImageFormat.Png);
+
+        //}
 
         public static void PushGradient(ref Bitmap bm, int strength)
         {
@@ -326,6 +408,7 @@ namespace Anime4KSharp
                         }
                     }
 
+                    lightestColor = Color.FromArgb(255, lightestColor.R, lightestColor.G, lightestColor.B);
                     bm.SetPixel(x, y, lightestColor);
                 }
             }
