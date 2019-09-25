@@ -41,21 +41,22 @@ namespace Anime4KSharp
             }
 
             img = upscale(img, (int)(img.Width * scale), (int)(img.Height * scale));
-            //img.Save("D:\\Video Materials\\TWEWY_Copy\\Bicubic.png", ImageFormat.Png);
+            //img.Save("Bicubic.png", ImageFormat.Png);
 
+            // Push twice to get sharper lines.
             for(int i = 0; i < 2; i++)
             {
                 // Compute Luminance and store it to alpha channel.
                 ImageProcess.ComputeLuminance(ref img);
-                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
+                //img.Save("Luminance.png", ImageFormat.Png);
 
                 // Push (Notice that the alpha channel is pushed with rgb channels).
                 ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
-                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
+                //img.Save("Push.png", ImageFormat.Png);
 
                 // Compute Gradient of Luminance and store it to alpha channel.
                 ImageProcess.ComputeGradient(ref img);
-                img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
+                //img.Save("Grad.png", ImageFormat.Png);
 
                 // Push Gradient
                 ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
