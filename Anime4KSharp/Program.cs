@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace Anime4KSharp
 {
@@ -43,21 +44,22 @@ namespace Anime4KSharp
             }
 
             img = upscale(img, (int)(img.Width * scale), (int)(img.Height * scale));
-
-            img.Save("D:\\Video Materials\\TWEWY_Copy\\Bilinear.png", System.Drawing.Imaging.ImageFormat.Png);
+            img.Save("D:\\Video Materials\\TWEWY_Copy\\Bilinear.png", ImageFormat.Png);
 
             // Compute Luminance and store it to alpha channel.
             ImageProcess.ComputeLuminance(ref img);
+            img.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
 
             // Push (Notice that the alpha channel is pushed with rgb channels).
             ImageProcess.PushColor(ref img, clamp((int)(pushStrength * 255), 0, 0xFFFF));
+            img.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
 
             // Compute Gradient of Luminance and store it to alpha channel.
             ImageProcess.ComputeGradient(ref img);
+            img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
 
             // Push Gradient
             ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
-
             img.Save(outputFile, System.Drawing.Imaging.ImageFormat.Png);
         }
 
@@ -71,7 +73,7 @@ namespace Anime4KSharp
 
         static Bitmap upscale(Bitmap bm, int width, int height)
         {
-            Bitmap newImage = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            Bitmap newImage = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
             Graphics g = Graphics.FromImage(newImage);
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;

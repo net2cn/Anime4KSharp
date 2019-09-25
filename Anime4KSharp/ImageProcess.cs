@@ -11,6 +11,7 @@ namespace Anime4KSharp
     {
         public static void ComputeLuminance(ref Bitmap bm)
         {
+            // This can be done in-place.
             for(int x = 0; x < bm.Width - 1; x++)
             {
                 for(int y = 0; y < bm.Height - 1; y++)
@@ -21,12 +22,12 @@ namespace Anime4KSharp
                     bm.SetPixel(x, y, Color.FromArgb(castedLum, pixel.R, pixel.G, pixel.B));
                 }
             }
-
-            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Luminance.png", ImageFormat.Png);
         }
 
         public static void PushColor(ref Bitmap bm, int strength)
         {
+            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+
             for (int x = 0; x < bm.Width-1; x++)
             {
                 for (int y = 0; y < bm.Height-1; y++)
@@ -55,27 +56,26 @@ namespace Anime4KSharp
                         yp = 0;
                     }
 
-                    var kernel = new List<Point>();
+                    /*
+                     * Kernel defination:
+                     * --------------
+                     * [tl] [tc] [tr]
+                     * [ml] [mc] [mc]
+                     * [bl] [bc] [br]
+                     * --------------
+                     */
+
                     //Top column
-                    //Point tl = new Point(x + xn, y + yn);
-                    //Point tc = new Point(x, y + yn);
-                    //Point tr = new Point(x + xp, y + yn);
                     var tl = bm.GetPixel(x + xn, y + yn);
                     var tc = bm.GetPixel(x, y + yn);
                     var tr = bm.GetPixel(x + xp, y + yn);
 
                     //Middle column
-                    //Point ml = new Point(x + xn, y);
-                    //Point mc = new Point(x, y);
-                    //Point mr = new Point(x + xp, y);
                     var ml = bm.GetPixel(x + xn, y);
                     var mc = bm.GetPixel(x, y);
                     var mr = bm.GetPixel(x + xp, y);
 
                     //Bottom column
-                    //Point bl = new Point(x + xn, y + yp);
-                    //Point bc = new Point(x, y + yp);
-                    //Point br = new Point(x + xp, y + yp);
                     var bl = bm.GetPixel(x + xn, y + yp);
                     var bc = bm.GetPixel(x, y + yp);
                     var br = bm.GetPixel(x + xp, y + yp);
@@ -154,11 +154,15 @@ namespace Anime4KSharp
                         }
                     }
 
-                    bm.SetPixel(x, y, lightestColor);
+                    temp.SetPixel(x, y, lightestColor);
                 }
             }
 
-            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Push.png", ImageFormat.Png);
+            // Write result back to bm
+            // Note that we don't have to re-calculate luminance again.
+            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
+            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
+            temp.Dispose();
         }
 
         public static void ComputeGradient(ref Bitmap bm)
@@ -166,6 +170,7 @@ namespace Anime4KSharp
             // Don't overwrite bm itself instantly after the one convolution is done. Do it after all convonlutions are done.
             Bitmap temp = new Bitmap(bm.Width, bm.Height);
 
+            // Sobel operator.
             int[][] sobelx = {new int[] {-1, 0, 1},
                               new int[] {-2, 0, 2},
                               new int[] {-1, 0, 1}};
@@ -174,6 +179,7 @@ namespace Anime4KSharp
                               new int[] { 0, 0, 0},
                               new int[] { 1, 2, 1}};
 
+            // Loop over each pixel and do convolution.
             for (int x = 1; x < bm.Width - 1; x++)
             {
                 for (int y = 1; y < bm.Height - 1; y++)
@@ -199,13 +205,17 @@ namespace Anime4KSharp
                 }
             }
 
+            // Write result back to bm.
             Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
             bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
-            bm.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
+            temp.Dispose();
         }
 
+        //Original HLSL's C# equivalent.
         //public static void ComputeGradient(ref Bitmap bm)
         //{
+        //    Bitmap temp = new Bitmap(bm.Width, bm.Height);
+
         //    for (int x = 0; x < bm.Width - 1; x++)
         //    {
         //        for (int y = 0; y < bm.Height - 1; y++)
@@ -266,21 +276,25 @@ namespace Anime4KSharp
 
         //            if (derivata > 255)
         //            {
-        //                bm.SetPixel(x, y, Color.FromArgb(255, mc.R, mc.G, mc.B));
+        //                temp.SetPixel(x, y, Color.FromArgb(255, mc.R, mc.G, mc.B));
         //            }
         //            else
         //            {
-        //                bm.SetPixel(x, y, Color.FromArgb((int)derivata, mc.R, mc.G, mc.B));
+        //                temp.SetPixel(x, y, Color.FromArgb((int)derivata, mc.R, mc.G, mc.B));
         //            }
         //        }
         //    }
 
-        //    bm.Save("D:\\Video Materials\\TWEWY_Copy\\PushGrad.png", ImageFormat.Png);
-
+        //    // Write result to bm's alpha channel.
+        //    Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
+        //    bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
+        //    temp.Dispose();
         //}
 
         public static void PushGradient(ref Bitmap bm, int strength)
         {
+            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+
             for (int x = 0; x < bm.Width - 1; x++)
             {
                 for (int y = 0; y < bm.Height - 1; y++)
@@ -309,27 +323,17 @@ namespace Anime4KSharp
                         yp = 0;
                     }
 
-                    var kernel = new List<Point>();
                     //Top column
-                    //Point tl = new Point(x + xn, y + yn);
-                    //Point tc = new Point(x, y + yn);
-                    //Point tr = new Point(x + xp, y + yn);
                     var tl = bm.GetPixel(x + xn, y + yn);
                     var tc = bm.GetPixel(x, y + yn);
                     var tr = bm.GetPixel(x + xp, y + yn);
 
                     //Middle column
-                    //Point ml = new Point(x + xn, y);
-                    //Point mc = new Point(x, y);
-                    //Point mr = new Point(x + xp, y);
                     var ml = bm.GetPixel(x + xn, y);
                     var mc = bm.GetPixel(x, y);
                     var mr = bm.GetPixel(x + xp, y);
 
                     //Bottom column
-                    //Point bl = new Point(x + xn, y + yp);
-                    //Point bc = new Point(x, y + yp);
-                    //Point br = new Point(x + xp, y + yp);
                     var bl = bm.GetPixel(x + xn, y + yp);
                     var bc = bm.GetPixel(x, y + yp);
                     var br = bm.GetPixel(x + xp, y + yp);
@@ -408,13 +412,16 @@ namespace Anime4KSharp
                         }
                     }
 
+                    // Remove alpha channel (which contains our graident) that is not needed.
                     lightestColor = Color.FromArgb(255, lightestColor.R, lightestColor.G, lightestColor.B);
-                    bm.SetPixel(x, y, lightestColor);
+                    temp.SetPixel(x, y, lightestColor);
                 }
             }
 
-            //bm.Save("D:\\Video Materials\\TWEWY_Copy\\PushGrad.png", ImageFormat.Png);
-
+            // Write result back to bm.
+            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
+            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
+            temp.Dispose();
         }
 
         private static int clamp(int i, int min, int max)
