@@ -55,7 +55,7 @@ namespace Anime4KSharp
 
                 // Compute Gradient of Luminance and store it to alpha channel.
                 ImageProcess.ComputeGradient(ref img);
-                //img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
+                img.Save("D:\\Video Materials\\TWEWY_Copy\\Grad.png", ImageFormat.Png);
 
                 // Push Gradient
                 ImageProcess.PushGradient(ref img, clamp((int)(pushGradStrength * 255), 0, 0xFFFF));
