@@ -1,5 +1,5 @@
 # Anime4KSharp
-A C# implementation of [Anime4K](https://github.com/bloc97/Anime4K) that execute compelete on CPU for getting a better understanding of the algorithm.
+A C# implementation of [Anime4K](https://github.com/bloc97/Anime4K) that execute compelete on CPU for getting a better understanding of the algorithm. It works more like a filter than a upscaler in my opinion.
 
 # Usage
 dotnet Anime4KSharp.dll [input_path] [output_path] [(Optional)scale] [(Optional)push_strength] [(Optional)push_gradient_strength]
@@ -50,8 +50,8 @@ FYI, here is a zoomed-in comparison between bicubic interpolation and 2 pass Ani
 - Apply FXAA filter to lines in order to get sharper (and smoother) edges.
 
 # Acknowledgements
-This repository contains the following images by [Rand0mZ](https://github.com/Rand0mZharp) and are authorized to used. THEY ARE FOR DEMOSTRATION ONLY, PLEASE DO NOT USE WITHOUT PERMISSION!
+This repository contains images by [Rand0mZ](https://github.com/Rand0mZharp) and are authorized to used. THEY ARE FOR DEMOSTRATION ONLY, PLEASE DO NOT USE WITHOUT PERMISSION!
 
 This repository is created only for learning purpose. I DO NOT take any responsibilities for any possible damages.
 
-2019, net2cn, in assistance of Rand0mZ.
+2019, net2cn, in assistance with Rand0mZ.
