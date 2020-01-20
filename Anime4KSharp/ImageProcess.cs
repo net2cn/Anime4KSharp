@@ -1,37 +1,83 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Runtime.InteropServices;
-using System.Text;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Anime4KSharp
 {
     public sealed class ImageProcess
     {
-        public static void ComputeLuminance(ref Bitmap bm)
+        public static unsafe Bitmap ComputeLuminance(Bitmap origBitmap)
         {
+            Bitmap newBitmap = new Bitmap(origBitmap.Width, origBitmap.Height, PixelFormat.Format32bppArgb);
+            using (Graphics g = Graphics.FromImage(newBitmap))
+                g.DrawImage(origBitmap, 0, 0, origBitmap.Width, origBitmap.Height);
+
+            BitmapData data = newBitmap.LockBits(new Rectangle(0, 0, newBitmap.Width, newBitmap.Height), ImageLockMode.ReadWrite, newBitmap.PixelFormat);
             // This can be done in-place.
-            for(int x = 0; x < bm.Width - 1; x++)
+            int w = newBitmap.Width - 1;
+            Parallel.For(0, newBitmap.Height - 1, y =>
             {
-                for(int y = 0; y < bm.Height - 1; y++)
+                int* scanline = GetScanline(data, y);
+                for (int x = 0; x < w; x++, scanline++)
                 {
-                    var pixel = bm.GetPixel(x, y);
+                    Color pixel = GetPixel(scanline);
                     float lum = pixel.GetBrightness();
-                    int castedLum = clamp(Convert.ToByte(lum * 255), 0, 0xFF);
-                    bm.SetPixel(x, y, Color.FromArgb(castedLum, pixel.R, pixel.G, pixel.B));
+                    byte castedLum = clamp(Convert.ToByte(lum * 255), 0, 0xFF);
+                    *(((byte*)scanline) + 3) = castedLum;
                 }
-            }
+            });
+            newBitmap.UnlockBits(data);
+            return newBitmap;
         }
 
-        public static void PushColor(ref Bitmap bm, int strength)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe Color GetPixel(int* pixel)
+        {
+            return Color.FromArgb(*pixel);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe Color GetPixel(byte* scan0, int stride, int x, int y)
+        {
+            return Color.FromArgb(*((int*)(scan0 + (stride * y)) + x));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe void SetPixel(byte* scan0, int stride, int x, int y, Color color)
+        {
+            *((int*)(scan0 + (stride * y)) + x) = color.ToArgb();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe void SetPixel(byte* scan0, Color color)
+        {
+            *(int*)scan0 = color.ToArgb();
+        }
+
+        private static unsafe int* GetScanline(BitmapData data, int y)
+        {
+            return (int*)(((byte*)data.Scan0) + (y * data.Stride));
+        }
+
+        public static unsafe Bitmap PushColor(Bitmap oldBitmap, int strength)
         {
             // Push color based on luminance.
-            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+            Rectangle entireRect = new Rectangle(0, 0, oldBitmap.Width, oldBitmap.Height);
+            Bitmap newBitmap = new Bitmap(oldBitmap.Width, oldBitmap.Height, PixelFormat.Format32bppArgb);
+            Color zero = oldBitmap.GetPixel(0, 0);
+            BitmapData newData = newBitmap.LockBits(entireRect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            BitmapData oldData = oldBitmap.LockBits(entireRect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
-            for (int x = 0; x < bm.Width-1; x++)
+            int h = oldBitmap.Height - 1;
+            int w = oldBitmap.Width - 1;
+            byte* oldScan0 = (byte*)oldData.Scan0;
+            byte* newScan0 = (byte*)newData.Scan0;
+            Parallel.For(0, h, y =>
             {
-                for (int y = 0; y < bm.Height-1; y++)
+                int* scanline = GetScanline(newData, y);
+                for (int x = 0; x < w; x++, scanline++)
                 {
                     //Default translation constants
                     int xn = -1;
@@ -44,7 +90,7 @@ namespace Anime4KSharp
                     {
                         xn = 0;
                     }
-                    else if (x == bm.Width - 1)
+                    else if (x == w)
                     {
                         xp = 0;
                     }
@@ -52,7 +98,7 @@ namespace Anime4KSharp
                     {
                         yn = 0;
                     }
-                    else if (y == bm.Height - 1)
+                    else if (y == h)
                     {
                         yp = 0;
                     }
@@ -67,21 +113,21 @@ namespace Anime4KSharp
                      */
 
                     //Top column
-                    var tl = bm.GetPixel(x + xn, y + yn);
-                    var tc = bm.GetPixel(x, y + yn);
-                    var tr = bm.GetPixel(x + xp, y + yn);
+                    var tl = GetPixel(oldScan0, oldData.Stride, x + xn, y + yn);
+                    var tc = GetPixel(oldScan0, oldData.Stride, x, y + yn);
+                    var tr = GetPixel(oldScan0, oldData.Stride, x + xp, y + yn);
 
                     //Middle column
-                    var ml = bm.GetPixel(x + xn, y);
-                    var mc = bm.GetPixel(x, y);
-                    var mr = bm.GetPixel(x + xp, y);
+                    var ml = GetPixel(oldScan0, oldData.Stride, x + xn, y);
+                    var mc = GetPixel(oldScan0, oldData.Stride, x, y);
+                    var mr = GetPixel(oldScan0, oldData.Stride, x + xp, y);
 
                     //Bottom column
-                    var bl = bm.GetPixel(x + xn, y + yp);
-                    var bc = bm.GetPixel(x, y + yp);
-                    var br = bm.GetPixel(x + xp, y + yp);
+                    var bl = GetPixel(oldScan0, oldData.Stride, x + xn, y + yp);
+                    var bc = GetPixel(oldScan0, oldData.Stride, x, y + yp);
+                    var br = GetPixel(oldScan0, oldData.Stride, x + xp, y + yp);
 
-                    var lightestColor = bm.GetPixel(x, y);
+                    var lightestColor = GetPixel(oldScan0, oldData.Stride, x, y);
 
                     //Kernel 0 and 4
                     float maxDark = max3(br, bc, bl);
@@ -155,21 +201,27 @@ namespace Anime4KSharp
                         }
                     }
 
-                    temp.SetPixel(x, y, lightestColor);
+                    *scanline = lightestColor.ToArgb();
                 }
-            }
+            });
 
-            // Write result back to bm
             // Note that we don't have to re-calculate luminance again.
-            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
-            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
-            temp.Dispose();
+            oldBitmap.UnlockBits(oldData);
+            newBitmap.UnlockBits(newData);
+            return newBitmap;
         }
-
-        public static void ComputeGradient(ref Bitmap bm)
+        public static unsafe Bitmap ComputeGradient(Bitmap oldBitmap)
         {
             // Don't overwrite bm itself instantly after the one convolution is done. Do it after all convonlutions are done.
-            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+            Bitmap newBitmap = new Bitmap(oldBitmap.Width, oldBitmap.Height, PixelFormat.Format32bppArgb);
+            Rectangle entireRect = new Rectangle(0, 0, oldBitmap.Width, oldBitmap.Height);
+            BitmapData newData = newBitmap.LockBits(entireRect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            BitmapData oldData = oldBitmap.LockBits(entireRect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+            int h = oldBitmap.Height - 1;
+            int w = oldBitmap.Width - 1;
+            byte* oldScan0 = (byte*)oldData.Scan0;
+            byte* newScan0 = (byte*)newData.Scan0;
 
             // Sobel operator.
             int[][] sobelx = {new int[] {-1, 0, 1},
@@ -181,35 +233,34 @@ namespace Anime4KSharp
                               new int[] { 1, 2, 1}};
 
             // Loop over each pixel and do convolution.
-            for (int x = 1; x < bm.Width - 1; x++)
+            Parallel.For(1, h, y =>
             {
-                for (int y = 1; y < bm.Height - 1; y++)
+                for (int x = 1; x < w; x++)
                 {
-                    int dx = bm.GetPixel(x - 1, y - 1).A * sobelx[0][0] + bm.GetPixel(x, y - 1).A * sobelx[0][1] + bm.GetPixel(x + 1, y - 1).A * sobelx[0][2]
-                              + bm.GetPixel(x - 1, y).A * sobelx[1][0] + bm.GetPixel(x, y).A * sobelx[1][1] + bm.GetPixel(x + 1, y).A * sobelx[1][2]
-                              + bm.GetPixel(x - 1, y + 1).A * sobelx[2][0] + bm.GetPixel(x, y + 1).A * sobelx[2][1] + bm.GetPixel(x + 1, y + 1).A * sobelx[2][2];
+                    int dx = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobelx[0][0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobelx[0][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobelx[0][2]
+                              + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobelx[1][0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobelx[1][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobelx[1][2]
+                              + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobelx[2][0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobelx[2][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobelx[2][2];
 
-                    int dy = bm.GetPixel(x - 1, y - 1).A * sobely[0][0] + bm.GetPixel(x, y - 1).A * sobely[0][1] + bm.GetPixel(x + 1, y - 1).A * sobely[0][2]
-                           + bm.GetPixel(x - 1, y).A * sobely[1][0] + bm.GetPixel(x, y).A * sobely[1][1] + bm.GetPixel(x + 1, y).A * sobely[1][2]
-                           + bm.GetPixel(x - 1, y + 1).A * sobely[2][0] + bm.GetPixel(x, y + 1).A * sobely[2][1] + bm.GetPixel(x + 1, y + 1).A * sobely[2][2];
+                    int dy = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobely[0][0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobely[0][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobely[0][2]
+                           + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobely[1][0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobely[1][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobely[1][2]
+                           + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobely[2][0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobely[2][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobely[2][2];
                     double derivata = Math.Sqrt((dx * dx) + (dy * dy));
 
-                    var pixel = bm.GetPixel(x, y);
+                    var pixel = GetPixel(oldScan0, oldData.Stride, x, y);
                     if (derivata > 255)
                     {
-                        temp.SetPixel(x, y, Color.FromArgb(0, pixel.R, pixel.G, pixel.B));
+                        SetPixel(newScan0, newData.Stride, x, y, Color.FromArgb(0, pixel.R, pixel.G, pixel.B));
                     }
                     else
                     {
-                        temp.SetPixel(x, y, Color.FromArgb(0xFF-(int)derivata, pixel.R, pixel.G, pixel.B));
+                        SetPixel(newScan0, newData.Stride, x, y, Color.FromArgb(0xFF - (int)derivata, pixel.R, pixel.G, pixel.B));
                     }
                 }
-            }
+            });
 
-            // Write result back to bm.
-            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
-            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
-            temp.Dispose();
+            oldBitmap.UnlockBits(oldData);
+            newBitmap.UnlockBits(newData);
+            return newBitmap;
         }
 
         //Original HLSL's C# equivalent.
@@ -292,14 +343,22 @@ namespace Anime4KSharp
         //    temp.Dispose();
         //}
 
-        public static void PushGradient(ref Bitmap bm, int strength)
+        public static unsafe Bitmap PushGradient(Bitmap oldBitmap, int strength)
         {
             // Push color based on gradient.
-            Bitmap temp = new Bitmap(bm.Width, bm.Height);
+            Bitmap newBitmap = new Bitmap(oldBitmap.Width, oldBitmap.Height, PixelFormat.Format32bppArgb);
+            Rectangle entireRect = new Rectangle(0, 0, oldBitmap.Width, oldBitmap.Height);
+            BitmapData newData = newBitmap.LockBits(entireRect, ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
+            BitmapData oldData = oldBitmap.LockBits(entireRect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
-            for (int x = 0; x < bm.Width - 1; x++)
+            int h = oldBitmap.Height - 1;
+            int w = oldBitmap.Width - 1;
+            byte* oldScan0 = (byte*)oldData.Scan0;
+            byte* newScan0 = (byte*)newData.Scan0;
+
+            Parallel.For(0, h, y =>
             {
-                for (int y = 0; y < bm.Height - 1; y++)
+                for (int x = 0; x < w; x++)
                 {
                     //Default translation constants
                     int xn = -1;
@@ -312,7 +371,7 @@ namespace Anime4KSharp
                     {
                         xn = 0;
                     }
-                    else if (x == bm.Width - 1)
+                    else if (x == w)
                     {
                         xp = 0;
                     }
@@ -320,27 +379,27 @@ namespace Anime4KSharp
                     {
                         yn = 0;
                     }
-                    else if (y == bm.Height - 1)
+                    else if (y == w)
                     {
                         yp = 0;
                     }
 
                     //Top column
-                    var tl = bm.GetPixel(x + xn, y + yn);
-                    var tc = bm.GetPixel(x, y + yn);
-                    var tr = bm.GetPixel(x + xp, y + yn);
+                    var tl = GetPixel(oldScan0, oldData.Stride, x + xn, y + yn);
+                    var tc = GetPixel(oldScan0, oldData.Stride, x, y + yn);
+                    var tr = GetPixel(oldScan0, oldData.Stride, x + xp, y + yn);
 
                     //Middle column
-                    var ml = bm.GetPixel(x + xn, y);
-                    var mc = bm.GetPixel(x, y);
-                    var mr = bm.GetPixel(x + xp, y);
+                    var ml = GetPixel(oldScan0, oldData.Stride, x + xn, y);
+                    var mc = GetPixel(oldScan0, oldData.Stride, x, y);
+                    var mr = GetPixel(oldScan0, oldData.Stride, x + xp, y);
 
                     //Bottom column
-                    var bl = bm.GetPixel(x + xn, y + yp);
-                    var bc = bm.GetPixel(x, y + yp);
-                    var br = bm.GetPixel(x + xp, y + yp);
+                    var bl = GetPixel(oldScan0, oldData.Stride, x + xn, y + yp);
+                    var bc = GetPixel(oldScan0, oldData.Stride, x, y + yp);
+                    var br = GetPixel(oldScan0, oldData.Stride, x + xp, y + yp);
 
-                    var lightestColor = bm.GetPixel(x, y);
+                    var lightestColor = GetPixel(oldScan0, oldData.Stride, x, y);
 
                     //Kernel 0 and 4
                     float maxDark = max3(br, bc, bl);
@@ -416,17 +475,17 @@ namespace Anime4KSharp
 
                     // Remove alpha channel (which contains our graident) that is not needed.
                     lightestColor = Color.FromArgb(255, lightestColor.R, lightestColor.G, lightestColor.B);
-                    temp.SetPixel(x, y, lightestColor);
+                    SetPixel(newScan0, newData.Stride, x, y, lightestColor);
                 }
-            }
+            });
 
-            // Write result back to bm.
-            Rectangle rect = new Rectangle(0, 0, bm.Width, bm.Height);
-            bm = temp.Clone(rect, PixelFormat.Format32bppArgb);
-            temp.Dispose();
+            oldBitmap.UnlockBits(oldData);
+            newBitmap.UnlockBits(newData);
+            return newBitmap;
         }
 
-        private static int clamp(int i, int min, int max)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte clamp(byte i, byte min, byte max)
         {
             if (i < min)
             {
@@ -439,17 +498,20 @@ namespace Anime4KSharp
 
             return i;
         }
-        
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int min3(Color a, Color b, Color c)
         {
             return Math.Min(Math.Min(a.A, b.A), c.A);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int max3(Color a, Color b, Color c)
         {
             return Math.Max(Math.Max(a.A, b.A), c.A);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Color getLargest(Color cc, Color lightestColor, Color a, Color b, Color c, int strength)
         {
             int ra = (cc.R * (0xFF - strength) + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
@@ -462,6 +524,7 @@ namespace Anime4KSharp
             return newColor.A > lightestColor.A ? newColor : lightestColor;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Color getAverage(Color cc, Color a, Color b, Color c, int strength)
         {
             int ra = (cc.R * (0xFF - strength) + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
