@@ -46,7 +46,6 @@ FYI, here is a zoomed-in comparison between bicubic interpolation and 2 pass Ani
 ![Comparison](images/Comparison.png?raw=true)
 
 # TODO
-- Use LockBits() instead of GetPixel() & SetPixels() to manipulate bitmaps faster.
 - Apply FXAA filter to lines in order to get sharper (and smoother) edges.
 
 # Acknowledgements
