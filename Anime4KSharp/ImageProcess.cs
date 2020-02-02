@@ -127,7 +127,7 @@ namespace Anime4KSharp
                     var bc = GetPixel(oldScan0, oldData.Stride, x, y + yp);
                     var br = GetPixel(oldScan0, oldData.Stride, x + xp, y + yp);
 
-                    var lightestColor = GetPixel(oldScan0, oldData.Stride, x, y);
+                    var lightestColor = mc;
 
                     //Kernel 0 and 4
                     float maxDark = max3(br, bc, bl);
@@ -224,36 +224,36 @@ namespace Anime4KSharp
             byte* newScan0 = (byte*)newData.Scan0;
 
             // Sobel operator.
-            int[][] sobelx = {new int[] {-1, 0, 1},
-                              new int[] {-2, 0, 2},
-                              new int[] {-1, 0, 1}};
+            int[,] sobelx = {{-1, 0, 1},
+                              {-2, 0, 2},
+                              {-1, 0, 1}};
 
-            int[][] sobely = {new int[] {-1, -2, -1},
-                              new int[] { 0, 0, 0},
-                              new int[] { 1, 2, 1}};
+            int[,] sobely = {{-1, -2, -1},
+                              { 0, 0, 0},
+                              { 1, 2, 1}};
 
             // Loop over each pixel and do convolution.
             Parallel.For(1, h, y =>
             {
                 for (int x = 1; x < w; x++)
                 {
-                    int dx = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobelx[0][0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobelx[0][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobelx[0][2]
-                              + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobelx[1][0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobelx[1][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobelx[1][2]
-                              + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobelx[2][0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobelx[2][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobelx[2][2];
+                    int dx = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobelx[0, 0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobelx[0, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobelx[0, 2]
+                              + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobelx[1, 0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobelx[1, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobelx[1, 2]
+                              + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobelx[2, 0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobelx[2, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobelx[2, 2];
 
-                    int dy = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobely[0][0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobely[0][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobely[0][2]
-                           + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobely[1][0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobely[1][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobely[1][2]
-                           + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobely[2][0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobely[2][1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobely[2][2];
-                    double derivata = Math.Sqrt((dx * dx) + (dy * dy));
+                    int dy = GetPixel(oldScan0, oldData.Stride, x - 1, y - 1).A * sobely[0, 0] + GetPixel(oldScan0, oldData.Stride, x, y - 1).A * sobely[0, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y - 1).A * sobely[0, 2]
+                           + GetPixel(oldScan0, oldData.Stride, x - 1, y).A * sobely[1, 0] + GetPixel(oldScan0, oldData.Stride, x, y).A * sobely[1, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y).A * sobely[1, 2]
+                           + GetPixel(oldScan0, oldData.Stride, x - 1, y + 1).A * sobely[2, 0] + GetPixel(oldScan0, oldData.Stride, x, y + 1).A * sobely[2, 1] + GetPixel(oldScan0, oldData.Stride, x + 1, y + 1).A * sobely[2, 2];
+                    int derivata = (dx * dx) + (dy * dy);
 
                     var pixel = GetPixel(oldScan0, oldData.Stride, x, y);
-                    if (derivata > 255)
+                    if (derivata > 255 * 255)
                     {
                         SetPixel(newScan0, newData.Stride, x, y, Color.FromArgb(0, pixel.R, pixel.G, pixel.B));
                     }
                     else
                     {
-                        SetPixel(newScan0, newData.Stride, x, y, Color.FromArgb(0xFF - (int)derivata, pixel.R, pixel.G, pixel.B));
+                        SetPixel(newScan0, newData.Stride, x, y, Color.FromArgb(0xFF - (int)Math.Sqrt(derivata), pixel.R, pixel.G, pixel.B));
                     }
                 }
             });
@@ -379,7 +379,7 @@ namespace Anime4KSharp
                     {
                         yn = 0;
                     }
-                    else if (y == w)
+                    else if (y == h)
                     {
                         yp = 0;
                     }
@@ -511,26 +511,31 @@ namespace Anime4KSharp
             return Math.Max(Math.Max(a.A, b.A), c.A);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static Color getLargest(Color cc, Color lightestColor, Color a, Color b, Color c, int strength)
         {
-            int ra = (cc.R * (0xFF - strength) + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
-            int ga = (cc.G * (0xFF - strength) + ((a.G + b.G + c.G) / 3) * strength) / 0xFF;
-            int ba = (cc.B * (0xFF - strength) + ((a.B + b.B + c.B) / 3) * strength) / 0xFF;
-            int aa = (cc.A * (0xFF - strength) + ((a.A + b.A + c.A) / 3) * strength) / 0xFF;
+            int inverseStrength = 0xFF - strength;
+            int aa = (cc.A * inverseStrength + ((a.A + b.A + c.A) / 3) * strength) / 0xFF;
+            if (aa > lightestColor.A)
+            {
+                int ra = (cc.R * inverseStrength + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
+                int ga = (cc.G * inverseStrength + ((a.G + b.G + c.G) / 3) * strength) / 0xFF;
+                int ba = (cc.B * inverseStrength + ((a.B + b.B + c.B) / 3) * strength) / 0xFF;
 
-            var newColor = Color.FromArgb(aa, ra, ga, ba);
+                return Color.FromArgb(aa, ra, ga, ba);
+            }
 
-            return newColor.A > lightestColor.A ? newColor : lightestColor;
+            return lightestColor;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.NoInlining)]
         private static Color getAverage(Color cc, Color a, Color b, Color c, int strength)
         {
-            int ra = (cc.R * (0xFF - strength) + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
-            int ga = (cc.G * (0xFF - strength) + ((a.G + b.G + c.G) / 3) * strength) / 0xFF;
-            int ba = (cc.B * (0xFF - strength) + ((a.B + b.B + c.B) / 3) * strength) / 0xFF;
-            int aa = (cc.A * (0xFF - strength) + ((a.A + b.A + c.A) / 3) * strength) / 0xFF;
+            int inverseStrength = (0xFF - strength);
+            int ra = (cc.R * inverseStrength + ((a.R + b.R + c.R) / 3) * strength) / 0xFF;
+            int ga = (cc.G * inverseStrength + ((a.G + b.G + c.G) / 3) * strength) / 0xFF;
+            int ba = (cc.B * inverseStrength + ((a.B + b.B + c.B) / 3) * strength) / 0xFF;
+            int aa = (cc.A * inverseStrength + ((a.A + b.A + c.A) / 3) * strength) / 0xFF;
 
             return Color.FromArgb(aa, ra, ga, ba);
         }
