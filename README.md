@@ -1,6 +1,10 @@
 # Anime4KSharp
 A C# implementation of [Anime4K](https://github.com/bloc97/Anime4K) that execute compelete on CPU for getting a better understanding of the algorithm. It works more like a filter than a upscaler in my opinion.
 
+## Note: This is an implementation of a very early version of Anime4K thus obsolete and not matching up-to-date with the current official Anime4K repo.
+
+---
+
 # Usage
 dotnet Anime4KSharp.dll [input_path] [output_path] [(Optional)scale] [(Optional)push_strength] [(Optional)push_gradient_strength]
 
